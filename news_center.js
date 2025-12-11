@@ -10,15 +10,14 @@
     "https://rss.app/feeds/kD2CHcsS01M2Fkhl.xml"
   ];
 
-  // You can keep the API key here for later if you want to use it server side,
-  // but it is not used in this client side call.
+  // Not used in the client call right now, kept for future use if needed
   var RSS2JSON_API_KEY = "tpi5xtjxdbufkxqeynr2nbxqjhlcxc31uddm4uiw";
 
   function getContainer() {
     return document.getElementById("hbe-news-list");
   }
 
-  // Important: no count, no order_by, no order_dir, no api_key
+  // No count, no order_by, rss2json default is fine
   function buildApiUrl(feedUrl) {
     var base = "https://api.rss2json.com/v1/api.json?rss_url=";
     var qs = encodeURIComponent(feedUrl);
@@ -66,12 +65,21 @@
           } else {
             var feedTitle = (data.feed && data.feed.title) ? data.feed.title : "";
             data.items.forEach(function(item) {
+              // Try to get a thumbnail if present
+              var thumb = "";
+              if (item.thumbnail) {
+                thumb = item.thumbnail;
+              } else if (item.enclosure && item.enclosure.link) {
+                thumb = item.enclosure.link;
+              }
+
               allItems.push({
                 title: item.title,
                 link: item.link,
                 pubDate: item.pubDate,
                 description: item.description,
-                feedTitle: feedTitle
+                feedTitle: feedTitle,
+                thumbnail: thumb
               });
             });
           }
@@ -86,6 +94,9 @@
     }
 
     function renderResult(items, errorsList) {
+      var container = getContainer();
+      if (!container) return;
+
       if (!items.length) {
         var msg = "<p>No news available at the moment.</p>";
         if (errorsList.length) {
@@ -103,7 +114,7 @@
       });
 
       var topItems = items.slice(0, 20);
-      var html = "";
+      var cardsHtml = "";
 
       topItems.forEach(function(item) {
         var pubDate = new Date(item.pubDate);
@@ -113,39 +124,43 @@
           day: "numeric"
         });
 
-        var desc = stripHtml(item.description).slice(0, 240);
+        var desc = stripHtml(item.description).slice(0, 260);
 
-        html += '<article style="' +
-          'border: 1px solid rgba(0,0,0,0.08);' +
-          'border-radius: 8px;' +
-          'padding: 16px 18px;' +
-          'margin-bottom: 14px;' +
-          'box-shadow: 0 2px 5px rgba(0,0,0,0.06);' +
-          'background: #fff;' +
-          '">' +
-          '<h3 style="margin: 0 0 6px; font-size: 17px;">' +
-          '<a href="' + item.link + '" target="_blank" rel="noopener noreferrer" ' +
-          'style="text-decoration: none; color: #111;">' +
-          item.title +
-          "</a>" +
-          "</h3>" +
-          '<div style="font-size: 13px; color: #777; margin-bottom: 8px;">' +
-          "<span>" + pubDateStr + "</span>" +
-          (item.feedTitle ? '<span style="margin-left: 10px;"> - ' + item.feedTitle + "</span>" : "") +
+        cardsHtml += '<article class="hbe-card">';
+
+        if (item.thumbnail) {
+          cardsHtml +=
+            '<div class="hbe-card-image-wrap">' +
+              '<img class="hbe-card-img" src="' + item.thumbnail + '" alt="">' +
+            "</div>";
+        }
+
+        cardsHtml +=
+          '<div class="hbe-card-content">' +
+            '<h3 class="hbe-card-title">' +
+              '<a href="' + item.link + '" target="_blank" rel="noopener noreferrer">' +
+                item.title +
+              "</a>" +
+            "</h3>" +
+            '<div class="hbe-card-meta">' +
+              pubDateStr +
+              (item.feedTitle ? "  ·  " + item.feedTitle : "") +
+            "</div>" +
+            '<p class="hbe-card-desc">' +
+              (desc ? desc + "..." : "") +
+            "</p>" +
           "</div>" +
-          '<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #444;">' +
-          (desc ? desc + "..." : "") +
-          "</p>" +
-          "</article>";
+        "</article>";
       });
 
       if (errorsList.length) {
-        html += "<p style='font-size:12px;color:#888;margin-top:10px;'>Some feeds reported issues:<br>" +
+        cardsHtml +=
+          '<p class="hbe-debug">Some feeds reported issues:<br>' +
           errorsList.join("<br>") +
           "</p>";
       }
 
-      container.innerHTML = html;
+      container.innerHTML = '<div class="hbe-grid">' + cardsHtml + "</div>";
     }
 
     fetchNextFeed();
