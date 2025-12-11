@@ -1,7 +1,7 @@
 (function() {
 
   // List of feeds
-    var FEEDS = [
+  var FEEDS = [
     "https://rss.app/feeds/HAFMc17VbGtre4Bj.xml",
     "https://rss.app/feeds/Z6kCJrBrPTs2jc16.xml",
     "https://rss.app/feeds/nmqCeoQWIHXm94y6.xml",
@@ -10,13 +10,16 @@
     "https://rss.app/feeds/kD2CHcsS01M2Fkhl.xml"
   ];
 
+  // You can keep the API key here for later if you want to use it server side,
+  // but it is not used in this client side call.
   var RSS2JSON_API_KEY = "tpi5xtjxdbufkxqeynr2nbxqjhlcxc31uddm4uiw";
 
   function getContainer() {
     return document.getElementById("hbe-news-list");
   }
 
-      function buildApiUrl(feedUrl) {
+  // Important: no count, no order_by, no order_dir, no api_key
+  function buildApiUrl(feedUrl) {
     var base = "https://api.rss2json.com/v1/api.json?rss_url=";
     var qs = encodeURIComponent(feedUrl);
     return base + qs;
@@ -32,7 +35,6 @@
   function loadFeeds() {
     var container = getContainer();
     if (!container) {
-      // Container not yet in DOM - try again shortly
       setTimeout(loadFeeds, 200);
       return;
     }
