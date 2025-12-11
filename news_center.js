@@ -16,12 +16,9 @@
     return document.getElementById("hbe-news-list");
   }
 
-    function buildApiUrl(feedUrl) {
-    var base = "https://api.rss2json.com/v1/api.json?";
-    var qs =
-      "api_key=" + encodeURIComponent(RSS2JSON_API_KEY) +
-      "&rss_url=" + encodeURIComponent(feedUrl) +
-      "&count=5&order_by=pubDate&order_dir=desc";
+      function buildApiUrl(feedUrl) {
+    var base = "https://api.rss2json.com/v1/api.json?rss_url=";
+    var qs = encodeURIComponent(feedUrl);
     return base + qs;
   }
 
