@@ -93,7 +93,7 @@
         });
     }
 
-    function renderResult(items, errorsList) {
+        function renderResult(items, errorsList) {
       var container = getContainer();
       if (!container) return;
 
@@ -116,7 +116,7 @@
       var topItems = items.slice(0, 20);
       var cardsHtml = "";
 
-      topItems.forEach(function(item) {
+      topItems.forEach(function(item, index) {
         var pubDate = new Date(item.pubDate);
         var pubDateStr = pubDate.toLocaleDateString(undefined, {
           year: "numeric",
@@ -126,7 +126,10 @@
 
         var desc = stripHtml(item.description).slice(0, 260);
 
-        cardsHtml += '<article class="hbe-card">';
+        // First two items as featured
+        var featuredClass = index < 2 ? " hbe-card-featured" : "";
+
+        cardsHtml += '<article class="hbe-card' + featuredClass + '">';
 
         if (item.thumbnail) {
           cardsHtml +=
