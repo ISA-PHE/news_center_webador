@@ -10,9 +10,6 @@
     "https://rss.app/feeds/kD2CHcsS01M2Fkhl.xml"
   ];
 
-  // Not used in the client call right now, kept for future use if needed
-  var RSS2JSON_API_KEY = "tpi5xtjxdbufkxqeynr2nbxqjhlcxc31uddm4uiw";
-
   function getContainer() {
     return document.getElementById("hbe-news-list");
   }
