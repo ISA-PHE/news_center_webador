@@ -2,12 +2,12 @@
 
   // List of feeds
   var FEEDS = [
-    "https://rss.app/feeds/HAFMc17VbGtre4Bj.xml",
-    "https://rss.app/feeds/Z6kCJrBrPTs2jc16.xml",
-    "https://rss.app/feeds/nmqCeoQWIHXm94y6.xml",
-    "https://rss.app/feeds/KFDIWkvk6ZKqJ6Dg.xml",
-    "https://rss.app/feeds/C4gX9cbEEAUcyuE1.xml",
-    "https://rss.app/feeds/kD2CHcsS01M2Fkhl.xml"
+    "https://news.mongabay.com/feed/",
+    "https://www.sciencedaily.com/rss/earth_climate.xml",
+    "https://singularityhub.com/feed/",
+    "https://www.resilience.org/feed/",
+    "https://www.brookings.edu/topic/global-development/feed/",
+    "https://www.pnas.org/rss/current.xml"
   ];
 
   function getContainer() {
