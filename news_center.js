@@ -3,7 +3,7 @@
   // List of feeds
   var FEEDS = [
     "https://journal.projecthomebase.earth/rss"
-    "https://news.mongabay.com/feed/",
+    "https://news-mongabay-com.mongabay.com/feed/",
     "https://www.sciencedaily.com/rss/earth_climate.xml",
     "https://singularityhub.com/feed/",
     "https://www.resilience.org/feed/",
