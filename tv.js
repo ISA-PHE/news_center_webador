@@ -1,19 +1,12 @@
 (function () {
   var CONFIG = {
-    // Programme guide container
     containerId: "hbe-streams-list",
-
-    // OPTIONAL: YouTube player container (create this div on Webador)
-    // <div class="hbe-embed-wrap" id="hbe-youtube-latest" style="min-height:480px;"></div>
     youtubePlayerContainerId: "hbe-youtube-latest",
 
-    // YouTube Channel ID (UC...)
+    // UC id only
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
-    // MVP schedule file you host somewhere (optional)
-    // Leave empty if you do not want "upcoming" yet.
     upcomingJsonUrl: "",
-
     maxItems: 18
   };
 
@@ -21,12 +14,8 @@
     return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl);
   }
 
-  function getContainer() {
-    return document.getElementById(CONFIG.containerId);
-  }
-
-  function getYouTubePlayerContainer() {
-    return document.getElementById(CONFIG.youtubePlayerContainerId);
+  function el(id) {
+    return document.getElementById(id);
   }
 
   function stripHtml(html) {
@@ -45,21 +34,21 @@
     return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
-  function renderYouTubePlaceholder(message) {
-    var el = getYouTubePlayerContainer();
-    if (!el) return;
-
-    el.innerHTML =
-      "<div style='padding:14px 16px; color:#666; font-size:13px; line-height:1.45;'>" +
-      (message || "No public YouTube videos available yet.") +
+  function setBoxMessage(targetEl, message, isError) {
+    if (!targetEl) return;
+    targetEl.innerHTML =
+      "<div style='padding:14px 16px; font-size:13px; line-height:1.45; color:" +
+      (isError ? "#8a1f1f" : "#666") +
+      ";'>" +
+      message +
       "</div>";
   }
 
   function renderLatestYouTubeVideo(videoId) {
-    var el = getYouTubePlayerContainer();
-    if (!el) return;
+    var box = el(CONFIG.youtubePlayerContainerId);
+    if (!box) return;
 
-    el.innerHTML =
+    box.innerHTML =
       '<iframe ' +
       'src="https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '" ' +
       'height="480" width="100%" ' +
@@ -67,8 +56,7 @@
       'allowfullscreen frameborder="0"></iframe>';
   }
 
-  function extractYouTubeVideoIdFromLink(link) {
-    // Typical RSS link is like: https://www.youtube.com/watch?v=VIDEOID
+  function extractYouTubeVideoId(link) {
     if (!link) return "";
     var m = link.match(/[?&]v=([^&]+)/);
     return (m && m[1]) ? m[1] : "";
@@ -118,7 +106,7 @@
   }
 
   function renderProgrammeGuide(items) {
-    var container = getContainer();
+    var container = el(CONFIG.containerId);
     if (!container) return;
 
     var upcoming = items.filter(function (x) { return x.kind === "upcoming"; })
@@ -149,74 +137,76 @@
 
       return (
         '<article class="hbe-card">' +
-        imgHtml +
-        '<div class="hbe-card-content">' +
-        '<div class="hbe-card-meta">' +
-        '<span class="hbe-badge">' + badge + "</span> " +
-        dtStr + (item.source ? "  ·  " + item.source : "") +
-        "</div>" +
-        '<h3 class="hbe-card-title">' + titleHtml + "</h3>" +
-        (desc ? '<p class="hbe-card-desc">' + desc + "...</p>" : "") +
-        "</div>" +
+          imgHtml +
+          '<div class="hbe-card-content">' +
+            '<div class="hbe-card-meta">' +
+              '<span class="hbe-badge">' + badge + "</span> " +
+              dtStr + (item.source ? "  ·  " + item.source : "") +
+            "</div>" +
+            '<h3 class="hbe-card-title">' + titleHtml + "</h3>" +
+            (desc ? '<p class="hbe-card-desc">' + desc + "...</p>" : "") +
+          "</div>" +
         "</article>"
       );
     }).join("");
 
-    container.innerHTML =
-      '<section class="hbe-guide-block">' +
-      '<div class="hbe-grid">' + cardsHtml + "</div>" +
-      "</section>";
+    container.innerHTML = '<div class="hbe-grid">' + cardsHtml + "</div>";
   }
 
   function loadYouTubeLatestVideo(youtubeRss) {
-    // Only run if the container exists on the page
-    if (!getYouTubePlayerContainer()) return;
+    var box = el(CONFIG.youtubePlayerContainerId);
+    if (!box) return;
+
+    // Show something immediately so you never see a blank white box
+    setBoxMessage(box, "Loading latest YouTube video...");
 
     if (!CONFIG.youtubeChannelId || CONFIG.youtubeChannelId.indexOf("UC") !== 0) {
-      renderYouTubePlaceholder("Configuration missing: please set youtubeChannelId to your UC... channel id.");
+      setBoxMessage(box, "YouTube configuration error: youtubeChannelId must be the UC... id (not a URL).", true);
       return;
     }
 
-    // Fetch RSS and embed first available video
     fetch(buildApiUrl(youtubeRss))
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data || data.status !== "ok" || !data.items || !data.items.length) {
-          renderYouTubePlaceholder("No public videos found yet.");
+        if (!data || data.status !== "ok") {
+          setBoxMessage(box, "YouTube feed error (rss2json). Try again later.", true);
+          return;
+        }
+        if (!data.items || !data.items.length) {
+          setBoxMessage(box, "No public YouTube videos found yet.");
           return;
         }
 
-        // Find first item that yields a usable video id
         for (var i = 0; i < data.items.length; i++) {
-          var vid = extractYouTubeVideoIdFromLink(data.items[i].link);
+          var vid = extractYouTubeVideoId(data.items[i].link);
           if (vid) {
             renderLatestYouTubeVideo(vid);
             return;
           }
         }
 
-        renderYouTubePlaceholder("Could not detect a playable video from the feed.");
+        setBoxMessage(box, "Could not detect a playable YouTube video from the feed.", true);
       })
-      .catch(function () {
-        renderYouTubePlaceholder("YouTube feed could not be loaded right now.");
+      .catch(function (e) {
+        setBoxMessage(box, "YouTube feed could not be loaded. This is usually a network block or rate limit.", true);
       });
   }
 
   function loadAll() {
-    var container = getContainer();
-    if (!container) {
+    var guide = el(CONFIG.containerId);
+    if (!guide) {
       setTimeout(loadAll, 200);
       return;
     }
 
-    container.innerHTML = "<p style='margin:0; color:#666; font-size:13px;'>Loading streams and videos...</p>";
+    guide.innerHTML = "<p style='margin:0; color:#666; font-size:13px;'>Loading programme guide...</p>";
 
     var youtubeRss = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CONFIG.youtubeChannelId;
 
-    // 1) Render the YouTube player (if the div exists in Webador)
+    // Player (if the div exists)
     loadYouTubeLatestVideo(youtubeRss);
 
-    // 2) Render the programme guide
+    // Guide
     Promise.all([
       loadUpcomingJson(CONFIG.upcomingJsonUrl),
       loadRssAsItems(youtubeRss, "YouTube")
