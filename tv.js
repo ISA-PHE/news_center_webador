@@ -1,12 +1,13 @@
 (function () {
   var CONFIG = {
+    // Programme guide container
     containerId: "hbe-streams-list",
 
-    // Twitch
-    twitchChannel: "project_homebase_earth",
-    twitchParentDomains: "projecthomebase.earth",
+    // OPTIONAL: YouTube player container (create this div on Webador)
+    // <div class="hbe-embed-wrap" id="hbe-youtube-latest" style="min-height:480px;"></div>
+    youtubePlayerContainerId: "hbe-youtube-latest",
 
-    // YouTube: paste your Channel ID here (starts with UC...)
+    // YouTube Channel ID (UC...)
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
     // MVP schedule file you host somewhere (optional)
@@ -24,6 +25,10 @@
     return document.getElementById(CONFIG.containerId);
   }
 
+  function getYouTubePlayerContainer() {
+    return document.getElementById(CONFIG.youtubePlayerContainerId);
+  }
+
   function stripHtml(html) {
     if (!html) return "";
     var tmp = document.createElement("div");
@@ -38,6 +43,35 @@
 
   function formatDate(dt) {
     return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function renderYouTubePlaceholder(message) {
+    var el = getYouTubePlayerContainer();
+    if (!el) return;
+
+    el.innerHTML =
+      "<div style='padding:14px 16px; color:#666; font-size:13px; line-height:1.45;'>" +
+      (message || "No public YouTube videos available yet.") +
+      "</div>";
+  }
+
+  function renderLatestYouTubeVideo(videoId) {
+    var el = getYouTubePlayerContainer();
+    if (!el) return;
+
+    el.innerHTML =
+      '<iframe ' +
+      'src="https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '" ' +
+      'height="480" width="100%" ' +
+      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
+      'allowfullscreen frameborder="0"></iframe>';
+  }
+
+  function extractYouTubeVideoIdFromLink(link) {
+    // Typical RSS link is like: https://www.youtube.com/watch?v=VIDEOID
+    if (!link) return "";
+    var m = link.match(/[?&]v=([^&]+)/);
+    return (m && m[1]) ? m[1] : "";
   }
 
   function loadRssAsItems(feedUrl, sourceLabel) {
@@ -83,7 +117,7 @@
       .catch(function () { return []; });
   }
 
-  function render(items) {
+  function renderProgrammeGuide(items) {
     var container = getContainer();
     if (!container) return;
 
@@ -94,6 +128,11 @@
       .sort(function (a, b) { return b.date - a.date; });
 
     var merged = upcoming.concat(published).slice(0, CONFIG.maxItems);
+
+    if (!merged.length) {
+      container.innerHTML = "<p style='margin:0; color:#666; font-size:13px;'>No items found yet.</p>";
+      return;
+    }
 
     var cardsHtml = merged.map(function (item) {
       var dtStr = formatDate(item.date);
@@ -110,24 +149,57 @@
 
       return (
         '<article class="hbe-card">' +
-          imgHtml +
-          '<div class="hbe-card-content">' +
-            '<div class="hbe-card-meta">' +
-              '<span class="hbe-badge">' + badge + '</span> ' +
-              dtStr + (item.source ? "  ·  " + item.source : "") +
-            "</div>" +
-            '<h3 class="hbe-card-title">' + titleHtml + "</h3>" +
-            (desc ? '<p class="hbe-card-desc">' + desc + "...</p>" : "") +
-          "</div>" +
+        imgHtml +
+        '<div class="hbe-card-content">' +
+        '<div class="hbe-card-meta">' +
+        '<span class="hbe-badge">' + badge + "</span> " +
+        dtStr + (item.source ? "  ·  " + item.source : "") +
+        "</div>" +
+        '<h3 class="hbe-card-title">' + titleHtml + "</h3>" +
+        (desc ? '<p class="hbe-card-desc">' + desc + "...</p>" : "") +
+        "</div>" +
         "</article>"
       );
     }).join("");
 
     container.innerHTML =
       '<section class="hbe-guide-block">' +
-        '<h2 class="hbe-section-title">Programme Guide</h2>' +
-        '<div class="hbe-grid">' + cardsHtml + "</div>" +
+      '<div class="hbe-grid">' + cardsHtml + "</div>" +
       "</section>";
+  }
+
+  function loadYouTubeLatestVideo(youtubeRss) {
+    // Only run if the container exists on the page
+    if (!getYouTubePlayerContainer()) return;
+
+    if (!CONFIG.youtubeChannelId || CONFIG.youtubeChannelId.indexOf("UC") !== 0) {
+      renderYouTubePlaceholder("Configuration missing: please set youtubeChannelId to your UC... channel id.");
+      return;
+    }
+
+    // Fetch RSS and embed first available video
+    fetch(buildApiUrl(youtubeRss))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || data.status !== "ok" || !data.items || !data.items.length) {
+          renderYouTubePlaceholder("No public videos found yet.");
+          return;
+        }
+
+        // Find first item that yields a usable video id
+        for (var i = 0; i < data.items.length; i++) {
+          var vid = extractYouTubeVideoIdFromLink(data.items[i].link);
+          if (vid) {
+            renderLatestYouTubeVideo(vid);
+            return;
+          }
+        }
+
+        renderYouTubePlaceholder("Could not detect a playable video from the feed.");
+      })
+      .catch(function () {
+        renderYouTubePlaceholder("YouTube feed could not be loaded right now.");
+      });
   }
 
   function loadAll() {
@@ -137,18 +209,21 @@
       return;
     }
 
-    container.innerHTML = "<p>Loading streams and videos...</p>";
+    container.innerHTML = "<p style='margin:0; color:#666; font-size:13px;'>Loading streams and videos...</p>";
 
-    // YouTube RSS needs channel_id (UC...)
     var youtubeRss = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CONFIG.youtubeChannelId;
 
+    // 1) Render the YouTube player (if the div exists in Webador)
+    loadYouTubeLatestVideo(youtubeRss);
+
+    // 2) Render the programme guide
     Promise.all([
       loadUpcomingJson(CONFIG.upcomingJsonUrl),
       loadRssAsItems(youtubeRss, "YouTube")
     ]).then(function (results) {
       var all = [];
       results.forEach(function (arr) { all = all.concat(arr || []); });
-      render(all);
+      renderProgrammeGuide(all);
     });
   }
 
