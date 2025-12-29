@@ -7,7 +7,7 @@
     twitchParentDomains: "projecthomebase.earth",
 
     // YouTube: paste your Channel ID here (starts with UC...)
-    youtubeChannelId: "https://youtube.com/channel/UCUcLdMy2dnTMBpvKe_29a2g",
+    youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
     // MVP schedule file you host somewhere (optional)
     // Leave empty if you do not want "upcoming" yet.
