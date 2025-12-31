@@ -6,7 +6,7 @@
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
     rumbleBoxId: "hbe-rumble-latest",
-    rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
+    rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth/videos",
 
     maxItems: 18
   };
@@ -129,7 +129,7 @@
 
     var it = items[0];
     var title = it.title || "Latest on Rumble";
-    var link = it.link || "https://rumble.com/user/project_homebase_earth";
+    var link = it.link || "https://rumble.com/user/project_homebase_earth/videos";
     var thumb = it.thumbnail || "";
     var date = formatDate(it.date);
 
