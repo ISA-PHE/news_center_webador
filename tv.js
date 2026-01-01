@@ -7,16 +7,13 @@
 
     rumbleBoxId: "hbe-rumble-latest",
     rumbleProfileUrl: "https://rumble.com/user/project_homebase_earth",
-
-    // Current OpenRSS feed (returns empty items for you right now)
     rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
 
-    // Manual fallback for Rumble (recommended until a working RSS exists)
-    // Put your actual first video URL here, e.g. "https://rumble.com/vXXXXXXX-title.html"
-    rumbleManualVideoUrl: "https://rumble.com/v73n70y-project-homebase-earth-we-are-shaping-a-future-worth-inheriting..html?e9s=src_v1_upp_v",
+    // Manual fallback (keeps Rumble visible even when RSS stays empty)
+    rumbleManualVideoUrl: "",            // set your real Rumble video URL
     rumbleManualTitle: "Latest on Rumble",
-    rumbleManualThumbnailUrl: "https://1a-1791.com/video/fww1/3b/s8/1/s/j/-/L/sj-Lz.oq1b-small-Project-Homebase-Earth-We-a.jpg", // optional (paste a thumbnail URL if you have one)
-    rumbleManualDateISO: "2025/12/30 10:50:33", // optional (e.g. "2026-01-01T12:00:00Z")
+    rumbleManualThumbnailUrl: "",        // optional
+    rumbleManualDateISO: "",             // optional
 
     maxItems: 18
   };
@@ -29,7 +26,7 @@
     tries = tries || 0;
     var el = byId(id);
     if (el) return cb(el);
-    if (tries > 80) return; // ~8 seconds
+    if (tries > 80) return;
     setTimeout(function () { waitForElement(id, cb, tries + 1); }, 100);
   }
 
@@ -69,15 +66,30 @@
     return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl);
   }
 
+  function titleFallback(sourceLabel, title, link) {
+    var t = (title || "").trim();
+    if (t) return t;
+
+    if (sourceLabel === "Rumble") return "Latest on Rumble";
+    if (sourceLabel === "YouTube") return "Latest on YouTube";
+
+    // Fallback to a readable label if absolutely nothing is present
+    return link ? "Open video" : "Latest update";
+  }
+
   function normalizeRssItems(items, sourceLabel) {
     if (!items || !items.length) return [];
     return items.map(function (it) {
       var dt = safeDate(it.pubDate) || safeDate(it.publishedDate) || new Date();
+      var link = (it.link || "").trim();
       var thumb = it.thumbnail || (it.enclosure && it.enclosure.link) || "";
+      var desc = stripHtml(it.description || "").trim();
+      var title = titleFallback(sourceLabel, it.title, link);
+
       return {
-        title: it.title || "",
-        link: it.link || "",
-        description: stripHtml(it.description || "").trim(),
+        title: title,
+        link: link,
+        description: desc,
         date: dt,
         source: sourceLabel,
         thumbnail: thumb
@@ -129,66 +141,49 @@
     );
   }
 
-  function renderRumbleCard(box, payload) {
-    var title = payload.title || "Latest on Rumble";
-    var link = payload.link || CONFIG.rumbleProfileUrl;
-    var thumb = payload.thumbnail || "";
-    var dtStr = payload.date ? formatDate(payload.date) : "";
+  function buildManualRumbleItem() {
+    var dt = CONFIG.rumbleManualDateISO ? safeDate(CONFIG.rumbleManualDateISO) : null;
+
+    var link = (CONFIG.rumbleManualVideoUrl || "").trim() || CONFIG.rumbleProfileUrl;
+    var title = (CONFIG.rumbleManualTitle || "").trim() || "Latest on Rumble";
+
+    return {
+      title: title,
+      link: link,
+      description: "Open on Rumble",
+      date: dt || new Date(),
+      source: "Rumble",
+      thumbnail: (CONFIG.rumbleManualThumbnailUrl || "").trim()
+    };
+  }
+
+  function renderRumbleCard(box, item) {
+    var title = (item && item.title) ? item.title : "Latest on Rumble";
+    var link = (item && item.link) ? item.link : CONFIG.rumbleProfileUrl;
+    var thumb = (item && item.thumbnail) ? item.thumbnail : "";
+    var dtStr = (item && item.date) ? formatDate(item.date) : "";
+
+    // Always show a title
+    var safeTitle = (title || "").trim() || "Latest on Rumble";
+
+    // Consistent layout even if thumb is missing
+    var thumbHtml = thumb
+      ? '<img src="' + thumb + '" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">'
+      : '<div style="width:120px;height:68px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:rgba(0,0,0,0.03);"></div>';
 
     var html =
       '<div style="display:flex;gap:14px;align-items:center;padding:14px 16px;">' +
-        (thumb
-          ? '<img src="' + thumb + '" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">'
-          : "") +
+        thumbHtml +
         '<div style="min-width:0;">' +
           '<div style="font-size:12px;color:#777;margin-bottom:6px;">' + (dtStr ? dtStr + " · " : "") + "Rumble</div>" +
           '<div style="font-size:15px;line-height:1.35;font-weight:600;margin-bottom:6px;">' +
-            '<a href="' + link + '" target="_blank" rel="noopener noreferrer">' + title + "</a>" +
+            '<a href="' + link + '" target="_blank" rel="noopener noreferrer">' + safeTitle + "</a>" +
           "</div>" +
           '<div style="font-size:13px;color:#444;line-height:1.45;">Open on Rumble</div>' +
         "</div>" +
       "</div>";
 
     write(box, html);
-  }
-
-  function buildManualRumbleItem() {
-    var hasVideo = !!CONFIG.rumbleManualVideoUrl;
-    var dt = CONFIG.rumbleManualDateISO ? safeDate(CONFIG.rumbleManualDateISO) : null;
-
-    return {
-      title: CONFIG.rumbleManualTitle || "Latest on Rumble",
-      link: hasVideo ? CONFIG.rumbleManualVideoUrl : CONFIG.rumbleProfileUrl,
-      description: hasVideo
-        ? "Open the latest video on Rumble."
-        : "Open the channel on Rumble.",
-      date: dt || new Date(),
-      source: "Rumble",
-      thumbnail: CONFIG.rumbleManualThumbnailUrl || ""
-    };
-  }
-
-  function renderRumbleLatest(box, rumbleItems) {
-    msg(box, "Loading latest Rumble video...");
-
-    if (rumbleItems && rumbleItems.length) {
-      renderRumbleCard(box, {
-        title: rumbleItems[0].title,
-        link: rumbleItems[0].link || CONFIG.rumbleProfileUrl,
-        thumbnail: rumbleItems[0].thumbnail,
-        date: rumbleItems[0].date
-      });
-      return;
-    }
-
-    // Feed is empty or not parseable. Use manual fallback.
-    var manual = buildManualRumbleItem();
-    renderRumbleCard(box, {
-      title: manual.title,
-      link: manual.link,
-      thumbnail: manual.thumbnail,
-      date: manual.date
-    });
   }
 
   function renderGuide(box, items) {
@@ -202,17 +197,22 @@
     var out = '<div class="hbe-grid">';
     for (var i = 0; i < Math.min(items.length, CONFIG.maxItems); i++) {
       var it = items[i];
+
       var dtStr = formatDate(it.date);
       var desc = (it.description || "").slice(0, 220);
       var badge = it.source || "Media";
 
+      // Always reserve thumbnail space so all cards align
       var imgHtml = it.thumbnail
         ? '<div class="hbe-card-image-wrap"><img class="hbe-card-img" src="' + it.thumbnail + '" alt=""></div>'
-        : "";
+        : '<div class="hbe-card-image-wrap"><div class="hbe-card-img" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.06);"></div></div>';
+
+      // Always ensure a title
+      var t = (it.title || "").trim() || (badge === "Rumble" ? "Latest on Rumble" : "Latest update");
 
       var titleHtml = it.link
-        ? '<a href="' + it.link + '" target="_blank" rel="noopener noreferrer">' + (it.title || "Untitled") + "</a>"
-        : (it.title || "Untitled");
+        ? '<a href="' + it.link + '" target="_blank" rel="noopener noreferrer">' + t + "</a>"
+        : t;
 
       out +=
         '<article class="hbe-card">' +
@@ -250,11 +250,13 @@
       if (ytBox) renderYouTubeLatest(ytBox, ytItems);
 
       var rBox = byId(CONFIG.rumbleBoxId);
-      if (rBox) renderRumbleLatest(rBox, rItems);
+      if (rBox) {
+        if (rItems.length) renderRumbleCard(rBox, rItems[0]);
+        else renderRumbleCard(rBox, buildManualRumbleItem());
+      }
 
-      // Always include manual Rumble entry if the feed is empty
-      var merged = ytItems.concat(rItems && rItems.length ? rItems : [buildManualRumbleItem()]);
-
+      // Ensure guide always includes one Rumble entry even if feed is empty
+      var merged = ytItems.concat(rItems.length ? rItems : [buildManualRumbleItem()]);
       var guideBox = byId(CONFIG.guideId);
       if (guideBox) renderGuide(guideBox, merged);
     });
