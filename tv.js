@@ -6,7 +6,12 @@
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
     rumbleBoxId: "hbe-rumble-latest",
-    rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth/videos",
+
+    // Current OpenRSS feed (currently returns 0 items)
+    // Replace this later with an RSS.app feed URL to make Rumble populate.
+    rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
+
+    rumbleProfileUrl: "https://rumble.com/user/project_homebase_earth",
 
     maxItems: 18
   };
@@ -19,7 +24,7 @@
     tries = tries || 0;
     var el = byId(id);
     if (el) return cb(el);
-    if (tries > 80) return; // ~8 seconds
+    if (tries > 80) return;
     setTimeout(function () { waitForElement(id, cb, tries + 1); }, 100);
   }
 
@@ -119,17 +124,35 @@
     );
   }
 
+  function renderRumbleFallbackCard(box, note) {
+    var html =
+      '<div style="display:flex;gap:14px;align-items:center;padding:14px 16px;">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:12px;color:#777;margin-bottom:6px;">Rumble</div>' +
+          '<div style="font-size:15px;line-height:1.35;font-weight:600;margin-bottom:6px;">' +
+            '<a href="' + CONFIG.rumbleProfileUrl + '" target="_blank" rel="noopener noreferrer">Open channel on Rumble</a>' +
+          '</div>' +
+          '<div style="font-size:13px;color:#444;line-height:1.45;">' + (note || "Feed not available yet.") + "</div>" +
+        "</div>" +
+      "</div>";
+    write(box, html);
+  }
+
   function renderRumbleLatest(box, items) {
     msg(box, "Loading latest Rumble video...");
 
     if (!items || !items.length) {
-      msg(box, "No Rumble videos found yet.");
+      // Key change: show a clean channel link instead of a dead-end message
+      renderRumbleFallbackCard(
+        box,
+        "No items returned by the RSS feed yet. This is typically a feed parsing limitation, not your website."
+      );
       return;
     }
 
     var it = items[0];
     var title = it.title || "Latest on Rumble";
-    var link = it.link || "https://rumble.com/user/project_homebase_earth/videos";
+    var link = it.link || CONFIG.rumbleProfileUrl;
     var thumb = it.thumbnail || "";
     var date = formatDate(it.date);
 
