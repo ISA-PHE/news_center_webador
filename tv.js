@@ -2,20 +2,18 @@
   var CONFIG = {
     guideId: "hbe-streams-list",
 
-    youtubeBoxId: "hbe-youtube-latest",
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
-    rumbleBoxId: "hbe-rumble-latest",
     rumbleProfileUrl: "https://rumble.com/user/project_homebase_earth",
     rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
 
-    // Manual fallback (keeps Rumble visible even when RSS stays empty)
-    rumbleManualVideoUrl: "https://rumble.com/v73n70y-project-homebase-earth-we-are-shaping-a-future-worth-inheriting..html",            // set your real Rumble video URL
-    rumbleManualTitle: "We are shaping a future worth inheriting.",
-    rumbleManualThumbnailUrl: "https://1a-1791.com/video/fww1/3b/s8/1/s/j/-/L/sj-Lz.oq1b-small-Project-Homebase-Earth-We-a.jpg",        // optional
-    rumbleManualDateISO: "2025/12/30 10:50:33	",             // optional
+    // Manual fallback so Rumble shows even if RSS stays empty
+    rumbleManualVideoUrl: "",            // put your real Rumble video URL here (optional)
+    rumbleManualTitle: "Latest on Rumble",
+    rumbleManualThumbnailUrl: "",        // optional
+    rumbleManualDateISO: "",             // optional
 
-    maxItems: 18
+    maxItems: 24
   };
 
   function byId(id) {
@@ -57,11 +55,6 @@
     return isNaN(dt.getTime()) ? null : dt;
   }
 
-  function formatDate(dt) {
-    if (!dt) return "";
-    return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  }
-
   function rss2jsonUrl(feedUrl) {
     return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl);
   }
@@ -69,11 +62,8 @@
   function titleFallback(sourceLabel, title, link) {
     var t = (title || "").trim();
     if (t) return t;
-
     if (sourceLabel === "Rumble") return "Latest on Rumble";
     if (sourceLabel === "YouTube") return "Latest on YouTube";
-
-    // Fallback to a readable label if absolutely nothing is present
     return link ? "Open video" : "Latest update";
   }
 
@@ -107,43 +97,8 @@
       .catch(function () { return []; });
   }
 
-  function extractYouTubeVideoId(link) {
-    if (!link) return "";
-    var m = link.match(/[?&]v=([^&]+)/);
-    return (m && m[1]) ? m[1] : "";
-  }
-
-  function renderYouTubeLatest(box, items) {
-    msg(box, "Loading latest YouTube video...");
-    if (!items || !items.length) {
-      msg(box, "No public YouTube videos available yet.");
-      return;
-    }
-
-    var vid = "";
-    for (var i = 0; i < items.length; i++) {
-      vid = extractYouTubeVideoId(items[i].link);
-      if (vid) break;
-    }
-
-    if (!vid) {
-      msg(box, "Could not extract YouTube video ID.", true);
-      return;
-    }
-
-    write(
-      box,
-      '<iframe src="https://www.youtube.com/embed/' +
-        encodeURIComponent(vid) +
-        '" width="100%" height="480" ' +
-        'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
-        'allowfullscreen frameborder="0"></iframe>'
-    );
-  }
-
   function buildManualRumbleItem() {
     var dt = CONFIG.rumbleManualDateISO ? safeDate(CONFIG.rumbleManualDateISO) : null;
-
     var link = (CONFIG.rumbleManualVideoUrl || "").trim() || CONFIG.rumbleProfileUrl;
     var title = (CONFIG.rumbleManualTitle || "").trim() || "Latest on Rumble";
 
@@ -157,87 +112,130 @@
     };
   }
 
-  function renderRumbleCard(box, item) {
-    var title = (item && item.title) ? item.title : "Latest on Rumble";
-    var link = (item && item.link) ? item.link : CONFIG.rumbleProfileUrl;
-    var thumb = (item && item.thumbnail) ? item.thumbnail : "";
-    var dtStr = (item && item.date) ? formatDate(item.date) : "";
-
-    // Always show a title
-    var safeTitle = (title || "").trim() || "Latest on Rumble";
-
-    // Consistent layout even if thumb is missing
-    var thumbHtml = thumb
-      ? '<img src="' + thumb + '" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">'
-      : '<div style="width:120px;height:68px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:rgba(0,0,0,0.03);"></div>';
-
-    var html =
-      '<div style="display:flex;gap:14px;align-items:center;padding:14px 16px;">' +
-        thumbHtml +
-        '<div style="min-width:0;">' +
-          '<div style="font-size:12px;color:#777;margin-bottom:6px;">' + (dtStr ? dtStr + " · " : "") + "Rumble</div>" +
-          '<div style="font-size:15px;line-height:1.35;font-weight:600;margin-bottom:6px;">' +
-            '<a href="' + link + '" target="_blank" rel="noopener noreferrer">' + safeTitle + "</a>" +
-          "</div>" +
-          '<div style="font-size:13px;color:#444;line-height:1.45;">Open on Rumble</div>' +
-        "</div>" +
-      "</div>";
-
-    write(box, html);
+  function isSameLocalDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
   }
 
-  function renderGuide(box, items) {
+  function startOfToday() {
+    var n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+
+  function startOfWeekMonday(d) {
+    var day = d.getDay(); // 0=Sun..6=Sat
+    var diff = (day === 0 ? 6 : day - 1); // Monday=0
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
+  }
+
+  function fmtTime(dt) {
+    return dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function fmtDateShort(dt) {
+    return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function escapeHtml(s) {
+    return (s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function renderGuideGrouped(container, items) {
     if (!items || !items.length) {
-      msg(box, "No items found yet.");
+      msg(container, "No items found yet.");
       return;
     }
 
+    // Sort newest first, cap
     items.sort(function (a, b) { return b.date - a.date; });
+    items = items.slice(0, CONFIG.maxItems);
 
-    var out = '<div class="hbe-grid">';
-    for (var i = 0; i < Math.min(items.length, CONFIG.maxItems); i++) {
+    var now = new Date();
+    var todayStart = startOfToday();
+    var weekStart = startOfWeekMonday(todayStart);
+
+    var today = [];
+    var week = [];
+    var older = [];
+
+    for (var i = 0; i < items.length; i++) {
       var it = items[i];
+      if (!it.date) {
+        older.push(it);
+        continue;
+      }
 
-      var dtStr = formatDate(it.date);
-      var desc = (it.description || "").slice(0, 220);
-      var badge = it.source || "Media";
-
-      // Always reserve thumbnail space so all cards align
-      var imgHtml = it.thumbnail
-        ? '<div class="hbe-card-image-wrap"><img class="hbe-card-img" src="' + it.thumbnail + '" alt=""></div>'
-        : '<div class="hbe-card-image-wrap"><div class="hbe-card-img" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.06);"></div></div>';
-
-      // Always ensure a title
-      var t = (it.title || "").trim() || (badge === "Rumble" ? "Latest on Rumble" : "Latest update");
-
-      var titleHtml = it.link
-        ? '<a href="' + it.link + '" target="_blank" rel="noopener noreferrer">' + t + "</a>"
-        : t;
-
-      out +=
-        '<article class="hbe-card">' +
-          imgHtml +
-          '<div class="hbe-card-content">' +
-            '<div class="hbe-card-meta">' +
-              '<span class="hbe-badge">' + badge + "</span> " +
-              (dtStr || "") +
-            "</div>" +
-            '<h3 class="hbe-card-title">' + titleHtml + "</h3>" +
-            (desc ? '<p class="hbe-card-desc">' + desc + "...</p>" : "") +
-          "</div>" +
-        "</article>";
+      if (isSameLocalDay(it.date, now)) {
+        today.push(it);
+      } else if (it.date >= weekStart) {
+        week.push(it);
+      } else {
+        older.push(it);
+      }
     }
-    out += "</div>";
 
-    write(box, out);
+    function itemRow(it) {
+      var badge = escapeHtml(it.source || "Media");
+      var title = escapeHtml((it.title || "").trim() || "Untitled");
+      var link = it.link || "";
+      var desc = escapeHtml((it.description || "").trim()).slice(0, 240);
+      var thumb = it.thumbnail || "";
+
+      var timeBlock = "<strong>" + fmtTime(it.date) + "</strong>" + fmtDateShort(it.date);
+
+      var thumbBlock = thumb
+        ? "<div class='hbe-guide-thumb'><img src='" + escapeHtml(thumb) + "' alt=''></div>"
+        : "<div class='hbe-guide-thumb'></div>";
+
+      var titleBlock = link
+        ? "<a href='" + escapeHtml(link) + "' target='_blank' rel='noopener noreferrer'>" + title + "</a>"
+        : title;
+
+      return (
+        "<div class='hbe-guide-item'>" +
+          "<div class='hbe-guide-time'>" + timeBlock + "</div>" +
+          thumbBlock +
+          "<div class='hbe-guide-main'>" +
+            "<div class='hbe-guide-meta'><span class='hbe-badge'>" + badge + "</span></div>" +
+            "<div class='hbe-guide-title'>" + titleBlock + "</div>" +
+            (desc ? "<p class='hbe-guide-desc'>" + desc + "...</p>" : "") +
+          "</div>" +
+        "</div>"
+      );
+    }
+
+    function groupBlock(label, arr) {
+      if (!arr.length) return "";
+      var rows = "<div class='hbe-guide-list'>";
+      for (var j = 0; j < arr.length; j++) rows += itemRow(arr[j]);
+      rows += "</div>";
+
+      return (
+        "<section class='hbe-guide-group'>" +
+          "<div class='hbe-guide-group-title'>" + escapeHtml(label) + "</div>" +
+          rows +
+        "</section>"
+      );
+    }
+
+    var html = "";
+    html += groupBlock("Today", today);
+    html += groupBlock("This week", week);
+    html += groupBlock("Older", older);
+
+    write(container, html);
   }
 
   function boot() {
-    var youtubeFeed = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CONFIG.youtubeChannelId;
-
-    waitForElement(CONFIG.youtubeBoxId, function (ytBox) { msg(ytBox, "Loading latest YouTube video..."); });
-    waitForElement(CONFIG.rumbleBoxId, function (rBox) { msg(rBox, "Loading latest Rumble video..."); });
     waitForElement(CONFIG.guideId, function (gBox) { msg(gBox, "Loading programme guide..."); });
+
+    var youtubeFeed = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CONFIG.youtubeChannelId;
 
     Promise.all([
       fetchFeedItems(youtubeFeed, "YouTube"),
@@ -246,19 +244,11 @@
       var ytItems = results[0] || [];
       var rItems = results[1] || [];
 
-      var ytBox = byId(CONFIG.youtubeBoxId);
-      if (ytBox) renderYouTubeLatest(ytBox, ytItems);
-
-      var rBox = byId(CONFIG.rumbleBoxId);
-      if (rBox) {
-        if (rItems.length) renderRumbleCard(rBox, rItems[0]);
-        else renderRumbleCard(rBox, buildManualRumbleItem());
-      }
-
-      // Ensure guide always includes one Rumble entry even if feed is empty
+      // Always include one Rumble entry if RSS is empty, so the guide remains stable
       var merged = ytItems.concat(rItems.length ? rItems : [buildManualRumbleItem()]);
+
       var guideBox = byId(CONFIG.guideId);
-      if (guideBox) renderGuide(guideBox, merged);
+      if (guideBox) renderGuideGrouped(guideBox, merged);
     });
   }
 
