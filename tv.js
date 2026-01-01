@@ -10,10 +10,10 @@
     rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
 
     // Manual fallback (keeps Rumble visible even when RSS stays empty)
-    rumbleManualVideoUrl: "",            // set your real Rumble video URL
+    rumbleManualVideoUrl: "https://rumble.com/v73n70y-project-homebase-earth-we-are-shaping-a-future-worth-inheriting..html",            // set your real Rumble video URL
     rumbleManualTitle: "Latest on Rumble",
-    rumbleManualThumbnailUrl: "",        // optional
-    rumbleManualDateISO: "",             // optional
+    rumbleManualThumbnailUrl: "https://1a-1791.com/video/fww1/3b/s8/1/s/j/-/L/sj-Lz.oq1b-small-Project-Homebase-Earth-We-a.jpg",        // optional
+    rumbleManualDateISO: "2025/12/30 10:50:33	",             // optional
 
     maxItems: 18
   };
