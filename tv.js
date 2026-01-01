@@ -6,12 +6,17 @@
     youtubeChannelId: "UCUcLdMy2dnTMBpvKe_29a2g",
 
     rumbleBoxId: "hbe-rumble-latest",
+    rumbleProfileUrl: "https://rumble.com/user/project_homebase_earth",
 
-    // Current OpenRSS feed (currently returns 0 items)
-    // Replace this later with an RSS.app feed URL to make Rumble populate.
+    // Current OpenRSS feed (returns empty items for you right now)
     rumbleRssUrl: "https://openrss.org/feed/rumble.com/user/project_homebase_earth",
 
-    rumbleProfileUrl: "https://rumble.com/user/project_homebase_earth",
+    // Manual fallback for Rumble (recommended until a working RSS exists)
+    // Put your actual first video URL here, e.g. "https://rumble.com/vXXXXXXX-title.html"
+    rumbleManualVideoUrl: "https://rumble.com/v73n70y-project-homebase-earth-we-are-shaping-a-future-worth-inheriting..html?e9s=src_v1_upp_v",
+    rumbleManualTitle: "Latest on Rumble",
+    rumbleManualThumbnailUrl: "https://1a-1791.com/video/fww1/3b/s8/1/s/j/-/L/sj-Lz.oq1b-small-Project-Homebase-Earth-We-a.jpg", // optional (paste a thumbnail URL if you have one)
+    rumbleManualDateISO: "2025/12/30 10:50:33", // optional (e.g. "2026-01-01T12:00:00Z")
 
     maxItems: 18
   };
@@ -24,7 +29,7 @@
     tries = tries || 0;
     var el = byId(id);
     if (el) return cb(el);
-    if (tries > 80) return;
+    if (tries > 80) return; // ~8 seconds
     setTimeout(function () { waitForElement(id, cb, tries + 1); }, 100);
   }
 
@@ -124,37 +129,11 @@
     );
   }
 
-  function renderRumbleFallbackCard(box, note) {
-    var html =
-      '<div style="display:flex;gap:14px;align-items:center;padding:14px 16px;">' +
-        '<div style="min-width:0;">' +
-          '<div style="font-size:12px;color:#777;margin-bottom:6px;">Rumble</div>' +
-          '<div style="font-size:15px;line-height:1.35;font-weight:600;margin-bottom:6px;">' +
-            '<a href="' + CONFIG.rumbleProfileUrl + '" target="_blank" rel="noopener noreferrer">Open channel on Rumble</a>' +
-          '</div>' +
-          '<div style="font-size:13px;color:#444;line-height:1.45;">' + (note || "Feed not available yet.") + "</div>" +
-        "</div>" +
-      "</div>";
-    write(box, html);
-  }
-
-  function renderRumbleLatest(box, items) {
-    msg(box, "Loading latest Rumble video...");
-
-    if (!items || !items.length) {
-      // Key change: show a clean channel link instead of a dead-end message
-      renderRumbleFallbackCard(
-        box,
-        "No items returned by the RSS feed yet. This is typically a feed parsing limitation, not your website."
-      );
-      return;
-    }
-
-    var it = items[0];
-    var title = it.title || "Latest on Rumble";
-    var link = it.link || CONFIG.rumbleProfileUrl;
-    var thumb = it.thumbnail || "";
-    var date = formatDate(it.date);
+  function renderRumbleCard(box, payload) {
+    var title = payload.title || "Latest on Rumble";
+    var link = payload.link || CONFIG.rumbleProfileUrl;
+    var thumb = payload.thumbnail || "";
+    var dtStr = payload.date ? formatDate(payload.date) : "";
 
     var html =
       '<div style="display:flex;gap:14px;align-items:center;padding:14px 16px;">' +
@@ -162,7 +141,7 @@
           ? '<img src="' + thumb + '" alt="" style="width:120px;height:68px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,0.06);">'
           : "") +
         '<div style="min-width:0;">' +
-          '<div style="font-size:12px;color:#777;margin-bottom:6px;">' + (date ? date + " · " : "") + "Rumble</div>" +
+          '<div style="font-size:12px;color:#777;margin-bottom:6px;">' + (dtStr ? dtStr + " · " : "") + "Rumble</div>" +
           '<div style="font-size:15px;line-height:1.35;font-weight:600;margin-bottom:6px;">' +
             '<a href="' + link + '" target="_blank" rel="noopener noreferrer">' + title + "</a>" +
           "</div>" +
@@ -171,6 +150,45 @@
       "</div>";
 
     write(box, html);
+  }
+
+  function buildManualRumbleItem() {
+    var hasVideo = !!CONFIG.rumbleManualVideoUrl;
+    var dt = CONFIG.rumbleManualDateISO ? safeDate(CONFIG.rumbleManualDateISO) : null;
+
+    return {
+      title: CONFIG.rumbleManualTitle || "Latest on Rumble",
+      link: hasVideo ? CONFIG.rumbleManualVideoUrl : CONFIG.rumbleProfileUrl,
+      description: hasVideo
+        ? "Open the latest video on Rumble."
+        : "Open the channel on Rumble.",
+      date: dt || new Date(),
+      source: "Rumble",
+      thumbnail: CONFIG.rumbleManualThumbnailUrl || ""
+    };
+  }
+
+  function renderRumbleLatest(box, rumbleItems) {
+    msg(box, "Loading latest Rumble video...");
+
+    if (rumbleItems && rumbleItems.length) {
+      renderRumbleCard(box, {
+        title: rumbleItems[0].title,
+        link: rumbleItems[0].link || CONFIG.rumbleProfileUrl,
+        thumbnail: rumbleItems[0].thumbnail,
+        date: rumbleItems[0].date
+      });
+      return;
+    }
+
+    // Feed is empty or not parseable. Use manual fallback.
+    var manual = buildManualRumbleItem();
+    renderRumbleCard(box, {
+      title: manual.title,
+      link: manual.link,
+      thumbnail: manual.thumbnail,
+      date: manual.date
+    });
   }
 
   function renderGuide(box, items) {
@@ -234,8 +252,11 @@
       var rBox = byId(CONFIG.rumbleBoxId);
       if (rBox) renderRumbleLatest(rBox, rItems);
 
+      // Always include manual Rumble entry if the feed is empty
+      var merged = ytItems.concat(rItems && rItems.length ? rItems : [buildManualRumbleItem()]);
+
       var guideBox = byId(CONFIG.guideId);
-      if (guideBox) renderGuide(guideBox, ytItems.concat(rItems));
+      if (guideBox) renderGuide(guideBox, merged);
     });
   }
 
