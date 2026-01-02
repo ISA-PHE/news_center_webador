@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "type": "News",
+      "title": "Project Homebase Earth: January roadmap published",
+      "date": "2026-01-02",
+      "url": "/news/january-roadmap",
+      "target": "_self"
+    },
+    {
+      "type": "Role",
+      "title": "Open role: Station Leader (Africa) applications open",
+      "date": "2025-12-28",
+      "url": "/roles/station-leader-africa",
+      "target": "_self"
+    },
+    {
+      "type": "Update",
+      "title": "New TV channel hub is live",
+      "date": "2025-12-22",
+      "url": "/tv",
+      "target": "_self"
+    }
+  ]
+}
