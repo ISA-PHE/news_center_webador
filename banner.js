@@ -4,33 +4,29 @@
   const script = document.currentScript;
 
   function getAttr(name, fallback) {
-    const v = script && script.dataset ? script.dataset[name] : "";
-    return v ? v : fallback;
+    if (!script || !script.dataset) return fallback;
+    const v = script.dataset[name];
+    return (v === undefined || v === null || v === "") ? fallback : v;
   }
 
   const FEED_URL = getAttr("feed", "");
+  const MAX_ITEMS = parseInt(getAttr("maxItems", "8"), 10);
+  const SPEED = parseFloat(getAttr("speed", "55"));
   const TRACK_ID = getAttr("trackId", "hbeNewsTrack");
-  const ROOT_ID = getAttr("rootId", "hbe-newsbar");
-  const MAX_ITEMS = Number(getAttr("maxItems", "8"));
-  const SPEED = Number(getAttr("speed", "55"));
-
-  const track = document.getElementById(TRACK_ID);
-  const bar = document.getElementById(ROOT_ID);
-
-  if (!track) return;
+  const BAR_ID = getAttr("barId", "hbe-newsbar");
 
   const state = {
     items: [],
     speedPxPerSec: Number.isFinite(SPEED) ? SPEED : 55,
     raf: null,
     x: 0,
-    paused: false
+    paused: false,
+    lastTs: null
   };
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
-    });
+  function setStatus(track, msg) {
+    if (!track) return;
+    track.innerHTML = "<span class='hbe-newsbar__loading'>" + msg + "</span>";
   }
 
   function fmtDate(iso) {
@@ -48,96 +44,125 @@
     const a = document.createElement("a");
     a.className = "hbe-newsbar__item";
     a.href = item.url || "#";
-
-    // Default behavior: stay on-site unless item explicitly requests a new tab
-    const newTab = typeof item.newTab === "boolean" ? item.newTab : false;
-    if (newTab) {
-      a.target = "_blank";
-      a.rel = "noopener noreferrer nofollow";
-    } else {
-      a.target = "_self";
-      a.rel = "nofollow";
-    }
+    a.target = item.target || "_self";
+    a.rel = (a.target === "_blank") ? "noopener noreferrer nofollow" : "nofollow";
 
     const pill = document.createElement("span");
     pill.className = "hbe-newsbar__pill";
     pill.textContent = (item.type || "Update").toUpperCase();
 
     const title = document.createElement("span");
-    title.innerHTML = escapeHtml(item.title || "Untitled");
+    title.textContent = item.title || "Untitled";
+
+    const dateText = item.date ? fmtDate(item.date) : "";
+    const date = document.createElement("span");
+    date.className = "hbe-newsbar__date";
+    date.textContent = dateText;
 
     a.appendChild(pill);
     a.appendChild(title);
-
-    const dateText = item.date ? fmtDate(item.date) : "";
-    if (dateText) {
-      const date = document.createElement("span");
-      date.className = "hbe-newsbar__date";
-      date.textContent = dateText;
-      a.appendChild(date);
-    }
+    if (dateText) a.appendChild(date);
 
     return a;
   }
 
-  function render(items) {
+  function render(track, items) {
     track.innerHTML = "";
     const fragment = document.createDocumentFragment();
 
-    items.forEach(function (it) {
-      fragment.appendChild(buildNode(it));
-    });
-
-    // Duplicate for seamless loop
-    items.forEach(function (it) {
-      fragment.appendChild(buildNode(it));
-    });
+    items.forEach(function (it) { fragment.appendChild(buildNode(it)); });
+    items.forEach(function (it) { fragment.appendChild(buildNode(it)); }); // duplicate for loop
 
     track.appendChild(fragment);
 
     state.x = 0;
+    state.lastTs = null;
+
     if (state.raf) cancelAnimationFrame(state.raf);
-    state.raf = requestAnimationFrame(tick);
+    state.raf = requestAnimationFrame(function tick(ts) {
+      if (!state.lastTs) state.lastTs = ts;
+      const dt = (ts - state.lastTs) / 1000;
+      state.lastTs = ts;
+
+      if (!state.paused) {
+        state.x -= state.speedPxPerSec * dt;
+
+        const halfWidth = track.scrollWidth / 2;
+        if (halfWidth > 0 && Math.abs(state.x) >= halfWidth) state.x = 0;
+
+        track.style.transform = "translateX(" + state.x + "px)";
+      }
+
+      state.raf = requestAnimationFrame(tick);
+    });
   }
 
-  function tick(ts) {
-    if (state.paused) {
-      state.raf = requestAnimationFrame(tick);
+  async function fetchJsonWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const t = setTimeout(function () { controller.abort(); }, timeoutMs);
+
+    try {
+      const bust = (url.indexOf("?") >= 0 ? "&" : "?") + "cb=" + Date.now();
+      const res = await fetch(url + bust, { cache: "no-store", signal: controller.signal });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return await res.json();
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  function sortAndSlice(items) {
+    const arr = Array.isArray(items) ? items.slice() : [];
+    arr.sort(function (a, b) {
+      return new Date(b.date || 0) - new Date(a.date || 0);
+    });
+    const n = Number.isFinite(MAX_ITEMS) ? MAX_ITEMS : 8;
+    return arr.slice(0, n);
+  }
+
+  async function boot() {
+    // Wait until DOM is ready and elements exist
+    const ready = (document.readyState === "loading")
+      ? new Promise(function (r) { document.addEventListener("DOMContentLoaded", r, { once: true }); })
+      : Promise.resolve();
+
+    await ready;
+
+    const track = document.getElementById(TRACK_ID);
+    const bar = document.getElementById(BAR_ID);
+
+    if (!track) return; // cannot render anywhere
+
+    // If FEED_URL missing, fail clearly
+    if (!FEED_URL) {
+      setStatus(track, "Missing feed URL.");
       return;
     }
 
-    const dt = (tick.lastTs ? (ts - tick.lastTs) : 16) / 1000;
-    tick.lastTs = ts;
-
-    state.x -= state.speedPxPerSec * dt;
-
-    const halfWidth = track.scrollWidth / 2;
-    if (halfWidth > 0 && Math.abs(state.x) >= halfWidth) {
-      state.x = 0;
+    // Hook pause events
+    if (bar) {
+      bar.addEventListener("mouseenter", function () { state.paused = true; });
+      bar.addEventListener("mouseleave", function () { state.paused = false; });
+      bar.addEventListener("focusin", function () { state.paused = true; });
+      bar.addEventListener("focusout", function () { state.paused = false; });
     }
 
-    track.style.transform = "translateX(" + state.x + "px)";
-    state.raf = requestAnimationFrame(tick);
+    // If fetch hangs or is blocked, do not stay on Loading forever
+    try {
+      const data = await fetchJsonWithTimeout(FEED_URL, 7000);
+      const items = sortAndSlice(data.items);
+
+      if (!items.length) {
+        setStatus(track, "No updates published yet.");
+        return;
+      }
+
+      render(track, items);
+    } catch (e) {
+      setStatus(track, "Updates unavailable. Please refresh.");
+      if (typeof console !== "undefined" && console.warn) console.warn("HBE banner fetch failed:", e);
+    }
   }
 
-  async function load() {
-    try {
-      if (!FEED_URL) throw new Error("Missing feed URL");
-
-      // Strong cache bust to avoid stale JSON from any layer
-      const url = FEED_URL + (FEED_URL.indexOf("?") >= 0 ? "&" : "?") + "cb=" + Date.now();
-
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error("Feed fetch failed: " + res.status);
-
-      const data = await res.json();
-      const items = Array.isArray(data.items) ? data.items : [];
-
-      items.sort(function (a, b) {
-        return new Date(b.date || 0) - new Date(a.date || 0);
-      });
-
-      state.items = items.slice(0, Number.isFinite(MAX_ITEMS) ? MAX_ITEMS : 8);
-
-      if (!state.items.length) {
-        track.innerHTML = "<span class='hbe-newsbar__loading'>No update
+  boot();
+})();
