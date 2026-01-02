@@ -1,26 +1,17 @@
-/* Core container */
 .hbe-newsbar{
   width:100%;
   border:1px solid rgba(0,0,0,.08);
   border-radius:14px;
-  background: linear-gradient(
-    135deg,
-    rgba(255,255,255,.95) 0%,
-    rgba(247,249,251,.95) 100%
-  );
+  background: linear-gradient(135deg, rgba(255,255,255,.95) 0%, rgba(247,249,251,.95) 100%);
   box-shadow: 0 10px 26px rgba(0,0,0,.06);
   overflow:hidden;
 }
-
-/* Inner layout */
 .hbe-newsbar__inner{
   display:flex;
   align-items:center;
   gap:14px;
   padding:12px 14px;
 }
-
-/* Latest label */
 .hbe-newsbar__label{
   flex:0 0 auto;
   font-weight:700;
@@ -31,15 +22,11 @@
   background: rgba(0,0,0,.06);
   color: rgba(0,0,0,.78);
 }
-
-/* Ticker area */
 .hbe-newsbar__ticker{
   flex:1 1 auto;
   min-width:0;
   overflow:hidden;
 }
-
-/* Moving track */
 .hbe-newsbar__track{
   display:flex;
   align-items:center;
@@ -47,8 +34,6 @@
   white-space:nowrap;
   will-change: transform;
 }
-
-/* News item */
 .hbe-newsbar__item{
   display:inline-flex;
   align-items:center;
@@ -58,12 +43,7 @@
   font-size:14px;
   line-height:1.2;
 }
-
-.hbe-newsbar__item:hover{
-  text-decoration:underline;
-}
-
-/* Type pill */
+.hbe-newsbar__item:hover{ text-decoration:underline; }
 .hbe-newsbar__pill{
   font-size:11px;
   font-weight:700;
@@ -73,27 +53,16 @@
   background: rgba(255,255,255,.75);
   color: rgba(0,0,0,.72);
 }
-
-/* Title text */
-.hbe-newsbar__title{
-  font-weight:600;
-}
-
-/* Date */
 .hbe-newsbar__date{
   font-size:12px;
   color: rgba(0,0,0,.55);
 }
-
-/* Action buttons */
 .hbe-newsbar__actions{
   flex:0 0 auto;
   display:flex;
   gap:10px;
   align-items:center;
 }
-
-/* Button base */
 .hbe-newsbar__btn{
   display:inline-flex;
   align-items:center;
@@ -104,52 +73,22 @@
   font-size:13px;
   text-decoration:none;
   border:1px solid rgba(0,0,0,.10);
-  transition:
-    transform .12s ease,
-    box-shadow .12s ease,
-    background .12s ease;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
   user-select:none;
   white-space:nowrap;
 }
+.hbe-newsbar__btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,0,0,.10); }
+.hbe-newsbar__btn--ghost{ background: rgba(255,255,255,.7); color: rgba(0,0,0,.78); }
+.hbe-newsbar__btn--primary{ background: rgba(0,0,0,.88); color: #fff; border-color: rgba(0,0,0,.10); }
 
-/* Button hover */
-.hbe-newsbar__btn:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(0,0,0,.10);
-}
-
-/* Ghost button */
-.hbe-newsbar__btn--ghost{
-  background: rgba(255,255,255,.7);
-  color: rgba(0,0,0,.78);
-}
-
-/* Primary button */
-.hbe-newsbar__btn--primary{
-  background: rgba(0,0,0,.88);
-  color:#fff;
-  border-color: rgba(0,0,0,.10);
-}
-
-/* Loading / fallback text */
 .hbe-newsbar__loading{
   font-size:13px;
   color: rgba(0,0,0,.60);
   padding-left:2px;
 }
 
-/* Mobile tuning */
 @media (max-width: 640px){
-  .hbe-newsbar__inner{
-    gap:10px;
-    padding:10px 10px;
-  }
-
-  .hbe-newsbar__label{
-    display:none;
-  }
-
-  .hbe-newsbar__btn--ghost{
-    display:none;
-  }
+  .hbe-newsbar__inner{ gap:10px; padding:10px 10px; }
+  .hbe-newsbar__label{ display:none; }
+  .hbe-newsbar__btn--ghost{ display:none; }
 }
