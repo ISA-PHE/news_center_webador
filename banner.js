@@ -69,16 +69,20 @@
     }
   }
 
-  function injectCss() {
-    const href = CFG.assetsBaseUrl + "banner.css";
-    // Avoid double inject
-    if (document.querySelector('link[data-hbe-news-banner="1"][href="' + href + '"]')) return;
+  function injectCss(url) {
+  if (!url) return;
 
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    link.setAttribute("data-hbe-news-banner", "1");
-    document.head.appendChild(link);
+  const bust = (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + Date.now();
+  const finalUrl = url + bust;
+
+  // Avoid double inject based on base url
+  if (document.querySelector('link[data-hbe-banner="1"]')) return;
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = finalUrl;
+  link.setAttribute("data-hbe-banner", "1");
+  document.head.appendChild(link);
   }
 
   function renderSkeleton(root) {
