@@ -1,10 +1,10 @@
 {
   "items": [
     {
-      "type": "News",
-      "title": "January roadmap published",
-      "date": "2026-01-02",
-      "url": "/news-center",
+      "type": "New Journal",
+      "title": "We are shaping a future worth inheriting.",
+      "date": "2026-01-01",
+      "url": "https://journal.projecthomebase.earth/project-homebase-earth/",
       "newTab": false
     },
     {
