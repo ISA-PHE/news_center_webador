@@ -5,8 +5,7 @@
     "https://www.sciencedaily.com/rss/earth_climate.xml",
     "https://singularityhub.com/feed/",
     "https://www.resilience.org/feed/",
-    "https://www.pnas.org/rss/current.xml",
-    "https://journal.projecthomebase.earth/rss"
+    "https://www.pnas.org/rss/current.xml"
   ];
 
   function getContainer() {
