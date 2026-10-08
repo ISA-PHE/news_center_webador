@@ -1,15 +1,15 @@
 {
   "items": [
     {
-      "type": "Academy",
-      "title": "New ELJ - The Monopoly Effect",
-      "url": "https://www.projecthomebase.earth/the-monopoly-effect-elj",
+      "type": "Sept 26 - R&D Project Start",
+      "title": "Local Resilience Systems Architecture",
+      "url": "https://www.projecthomebase.earth/r-d-institute",
       "newTab": false
     },
     {
-      "type": "Role",
-      "title": "Open role: Google Marketing & Analytics Lead",
-      "url": "https://www.projecthomebase.earth/contribution-hub",
+      "type": "Oct 8 - R&D Project Start",
+      "title": "Rethinking Educational Architecture Through Human Development, Neuroscience and Nature",
+      "url": "https://www.projecthomebase.earth/r-d-institute",
       "newTab": false
     },
     {
@@ -31,16 +31,17 @@
       "newTab": false
     },
     {
-      "type": "Sept 26 - R&D Project Start",
-      "title": "Local Resilience Systems Architecture",
-      "url": "https://www.projecthomebase.earth/r-d-institute",
+      "type": "Academy",
+      "title": "New ELJ - The Monopoly Effect",
+      "url": "https://www.projecthomebase.earth/the-monopoly-effect-elj",
       "newTab": false
     },
     {
-      "type": "Oct 8 - R&D Project Start",
-      "title": "Rethinking Educational Architecture Through Human Development, Neuroscience and Nature",
-      "url": "https://www.projecthomebase.earth/r-d-institute",
+      "type": "Role",
+      "title": "Open role: Google Marketing & Analytics Lead",
+      "url": "https://www.projecthomebase.earth/contribution-hub",
       "newTab": false
     }
   ]
 }
+      
